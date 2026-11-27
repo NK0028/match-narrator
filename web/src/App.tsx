@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ClipSummary, Event, Line, Mode, Track, detectMode, getTrack, jobStatus, listClips, mediaUrl, upload,
 } from "./api";
+import LivePlayer from "./Live";
 
 const ICON: Record<string, string> = {
   goal: "⚽", shot: "🎯", corner: "⛳", card: "🟨", red_card: "🟥", kickoff: "▶️", substitution: "🔁",
@@ -17,6 +18,8 @@ const fmt = (s: number) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${Str
 export default function App() {
   const [mode, setMode] = useState<Mode | null>(null);
   const [uploads, setUploads] = useState(false);
+  const [live, setLive] = useState(false);
+  const [view, setView] = useState<"clips" | "live">("clips");
   const [clips, setClips] = useState<ClipSummary[]>([]);
   const [clipId, setClipId] = useState<string | null>(null);
   const [track, setTrack] = useState<Track | null>(null);
@@ -29,9 +32,11 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    detectMode().then(async ({ mode, uploads }) => {
+    detectMode().then(async ({ mode, uploads, live }) => {
       setMode(mode);
       setUploads(uploads);
+      setLive(live);
+      if (live && location.hash === "#live") setView("live");
       const cs = await refresh(mode);
       const fromHash = location.hash.slice(1);
       setClipId(cs.find((c) => c.id === fromHash)?.id ?? cs[0]?.id ?? null);
@@ -39,17 +44,22 @@ export default function App() {
   }, [refresh]);
 
   useEffect(() => {
-    const onHash = () => { const h = location.hash.slice(1); if (h) setClipId(h); };
+    const onHash = () => {
+      const h = location.hash.slice(1);
+      if (h === "live") setView("live");
+      else if (h) { setView("clips"); setClipId(h); }
+    };
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
 
   useEffect(() => {
-    if (!mode || !clipId) return;
+    if (!mode || !clipId || view === "live") return;
     location.hash = clipId;
     setTrack(null);
     getTrack(mode, clipId).then(setTrack).catch((e) => setError(String(e)));
-  }, [mode, clipId]);
+  }, [mode, clipId, view]);
+  const onLiveFinished = useCallback(() => { if (mode) refresh(mode); }, [mode, refresh]);
 
   return (
     <div className="app">
@@ -65,11 +75,17 @@ export default function App() {
       </header>
       <div className="layout">
         <aside>
+          {live && (
+            <div className="tabs">
+              <button className={view === "clips" ? "active" : ""} onClick={() => { setView("clips"); if (clipId) location.hash = clipId; }}>Clips</button>
+              <button className={view === "live" ? "active" : ""} onClick={() => { setView("live"); location.hash = "live"; }}>● Live commentary</button>
+            </div>
+          )}
           <h2>Clips</h2>
           <ul className="clips">
             {clips.map((c) => (
               <li key={c.id}>
-                <button className={c.id === clipId ? "active" : ""} onClick={() => setClipId(c.id)}>
+                <button className={c.id === clipId && view === "clips" ? "active" : ""} onClick={() => { setView("clips"); setClipId(c.id); }}>
                   <span className="title">{c.title}</span>
                   <span className="meta">{fmt(c.duration)} · {c.n_events} events · {c.n_lines} lines</span>
                 </button>
@@ -84,7 +100,8 @@ export default function App() {
         </aside>
         <main>
           {error && <div className="error">{error}</div>}
-          {track && mode ? <Player key={track.clip_id} mode={mode} track={track} /> : <div className="loading">Loading…</div>}
+          {view === "live" && live ? <LivePlayer onFinished={onLiveFinished} />
+            : track && mode ? <Player key={track.clip_id} mode={mode} track={track} /> : <div className="loading">Loading…</div>}
         </main>
       </div>
     </div>

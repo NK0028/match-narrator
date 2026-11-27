@@ -100,7 +100,13 @@ class LiveSession:
             spotter = _ChunkSpotter(self.video, exc) if _ChunkSpotter.enabled() else None
             analyzer = PlayAnalyzer(tracker=self.tracker)
             last_pub = 0.0
+            counts = {"frames": 0, "wide": 0, "ball_wide": 0, "holder": 0}
             for st in analyzer.run(self.video):
+                counts["frames"] += 1
+                if st.view == "wide":
+                    counts["wide"] += 1
+                    counts["ball_wide"] += st.ball_xy is not None
+                    counts["holder"] += st.holder is not None
                 moments = detector.feed(st)
                 if spotter:
                     moments += spotter.until(st.t)
@@ -124,7 +130,9 @@ class LiveSession:
                          "llm_latency_p50": _pct(llm.latencies, 50) if llm else None,
                          "llm_latency_p95": _pct(llm.latencies, 95) if llm else None,
                          "llm_late": director.llm_late, "llm_rejected": len(director.rejected),
-                         "roars": len(roars)}
+                         "roars": len(roars), **counts,
+                         "ball_rate_wide": round(counts["ball_wide"] / counts["wide"], 3) if counts["wide"] else None,
+                         "holder_rate_wide": round(counts["holder"] / counts["wide"], 3) if counts["wide"] else None}
             with self.cond:
                 self.status = "finalizing"
                 self.cond.notify_all()

@@ -97,6 +97,37 @@ mixed into one track at their event times, encoded to AAC, and optionally muxed 
   the commentary feed (template vs LLM badges, confidence), and the raw event JSON the LLM sees.
 - The build also works as a **static site**: without a backend it reads `demo/index.json`.
 
+### 6. Live mode — `commentator/live/` (continuous commentary on an uploaded match)
+Open the app with the backend running, choose **● Live commentary**, pick a match video and press **Go live**.
+The video plays straight from your disk after a 10 s buffer while the server analyses ahead of it and
+streams lines over server-sent events, like a broadcast delay. If playback catches up, it pauses with
+"buffering commentary".
+- `analyzer.py`: YOLO + ByteTrack at 5 fps over the whole video. It names the kits by jersey-colour k-means,
+  takes the player nearest the ball as the holder, classifies each frame as a wide or close-up view, and
+  measures camera pan by phase correlation.
+- `audio.py`: crowd loudness z-scored against a rolling 60 s baseline. Roars become big moments, and any goal
+  the spotter claims must be confirmed by one.
+- `moments.py`: a hysteresis state machine (a holder must persist 0.6 s, so detector flicker never becomes a
+  pass). It emits pass, turnover, possession, carry, attack, roar and close-up moments, plus running stats
+  (possession %, passes, pass chains).
+- `director.py`: one line every ~3–6 s. Big moments pre-empt, moments older than 3 s are dropped (live
+  commentary never narrates the past), and silences over 5 s get a stats line. Claude (`COMMENTARY_LIVE_MODEL`,
+  default `claude-haiku-5-5`) writes each line asynchronously against a 3 s deadline. A line that is late, too
+  long or fails the grounding guard is replaced by a template.
+- `session.py` + `/api/live`, `/api/live/{id}/stream`: the worker thread and the SSE stream. The stream replays
+  from `?since=`, so a dropped connection resumes. A finished session is saved as a normal clip.
+- The browser speaks the lines with the Web Speech API and ducks the match audio under the voice.
+
+Measure it on your own clip: `python eval/live_eval.py match.mp4`. It writes `eval/live_metrics.json` (speed,
+speech coverage, gaps, Claude latency, ball-detection rate) and a 30-line `eval/live_spotcheck.csv`.
+
+Live-mode limits:
+- With no pitch homography, direction is screen-relative ("play swings left"), not pitch zones.
+- Possession is a nearest-player heuristic that gets noisy when the ball is hidden or tiny. Try `YOLO_IMGSZ=1280`.
+- Kits are named by colour, and player names would need readable numbers plus a roster.
+- The raw-video spotter is opt-in (`LIVE_SPOTTER=1`, plus SoccerNet's `pca_512_TF2.pkl` / `average_512_TF2.pkl`
+  in `models/`), because torchvision features differ from SoccerNet's.
+
 ## Data & licensing
 - SoccerNet labels/features are public; raw broadcast videos need the SoccerNet NDA and are **not used
   or redistributed**. Demo clips are a **synthetic top-down match view** (`scripts/render_demo_clip.py`):
@@ -113,14 +144,17 @@ mixed into one track at their event times, encoded to AAC, and optionally muxed 
 | `COMMENTARY_LLM` | `auto` | `off` forces templates |
 | `TTS_BACKEND` | `auto` | `say` / `espeak` / `pyttsx3` / `coqui` / `none` |
 | `YOLO_WEIGHTS` | `yolo11n.pt` | detector weights |
-| `ALLOW_UPLOADS`, `MAX_UPLOAD_MB` | `1`, `200` | upload endpoint controls |
+| `ALLOW_UPLOADS`, `MAX_UPLOAD_MB` | `1`, `4096` | upload / live endpoint controls (lower the limit when hosting) |
+| `COMMENTARY_LIVE_MODEL` | `claude-haiku-5-5` | Claude model for live play-by-play lines |
+| `YOLO_IMGSZ` | `640` | detector input size; 1280 finds more balls in wide shots, at ~3× the cost |
+| `LIVE_SPOTTER` | unset | `1` runs the SoccerNet spotter on raw video in live mode (needs the PCA files) |
 
 ## Known limitations (v1 scope)
 - Player identity is per-shot only; cross-cut re-identification (SoccerNet Re-ID) is a stretch goal.
 - Spotting on raw uploads uses torchvision ResNet-152 features, which differ from SoccerNet's TF2
   features — treat it as experimental, or supply an events JSON.
 - Team on SoccerNet windows comes from the spotter's team head (home/away), not jersey colours.
-- No fouls/offside judgement, tactics or true real-time streaming.
+- No fouls/offside judgement or tactics. Live mode streams an uploaded file with a short delay; it does not ingest a broadcast feed.
 
 ## Results summary
 
@@ -164,11 +198,12 @@ Optionally add an `ANTHROPIC_API_KEY` secret in the Space settings to enable LLM
 commentator/   schema.py · pipeline.py · textmetrics.py
   spotting/    data.py model.py train.py infer.py evaluate.py features.py
   context/     detect.py teams.py tagging.py
+  live/        analyzer.py audio.py moments.py director.py session.py
   generation/  templates.py llm.py guard.py generator.py
   tts/         engine.py
 server/app.py  FastAPI
 web/           React + Vite player
-eval/          tune_thresholds.py run_eval.py make_report.py REPORT.md + metric JSONs
+eval/          tune_thresholds.py run_eval.py make_report.py live_eval.py REPORT.md + metric JSONs
 scripts/       download_soccernet.py render_demo_clip.py build_demo.py
 models/        spotter.pt thresholds.json
 ```

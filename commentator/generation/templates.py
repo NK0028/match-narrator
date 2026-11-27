@@ -203,7 +203,8 @@ _FIELD = __import__("re").compile(r"{(\w+)}")
 def render_live(ev: Event, idx: int = 0, lang: str = "en", seed: int = 0, avoid: set[str] | None = None) -> str:
     lang = lang if lang in LIVE_TEMPLATES else "en"
     m = ev.meta
-    facts = {"team": ev.team, "opponent": m.get("opponent"), "chain": m.get("pass_chain"),
+    kit = lambda k: k.title() if isinstance(k, str) and lang == "en" else k  # noqa: E731  "red" -> "Red"
+    facts = {"team": kit(ev.team), "opponent": kit(m.get("opponent")), "chain": m.get("pass_chain"),
              "direction": m.get("direction"), "possession_pct": m.get("possession_pct"), "passes": m.get("passes")}
     if lang == "ur" and facts["direction"]:
         facts["direction"] = UR_DIRECTION.get(facts["direction"], facts["direction"])
