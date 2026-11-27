@@ -1,0 +1,14 @@
+.venv/
+data/
+outputs/
+models/*.pt
+!models/spotter.pt
+models/smoke*
+web/node_modules/
+web/dist/
+__pycache__/
+*.pyc
+.pytest_cache/
+.DS_Store
+.claude/
+.netlify/

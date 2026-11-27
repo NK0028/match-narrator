@@ -1,0 +1,9 @@
+.venv
+data
+outputs
+web/node_modules
+web/dist
+**/__pycache__
+.git
+models/smoke*
+models/yolo*.pt

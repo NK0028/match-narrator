@@ -1,0 +1,13 @@
+# Static demo build: the React player reads web/public/demo/index.json (no backend).
+[build]
+  base    = "web"
+  command = "npm ci && npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+[[headers]]
+  for = "/demo/*"
+  [headers.values]
+    Cache-Control = "public, max-age=86400"

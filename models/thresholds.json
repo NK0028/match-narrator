@@ -1,0 +1,19 @@
+{
+ "Penalty": 0.6,
+ "Kick-off": 0.868,
+ "Goal": 0.894,
+ "Substitution": 0.86,
+ "Offside": 0.833,
+ "Shots on target": 0.752,
+ "Shots off target": 0.852,
+ "Clearance": 0.757,
+ "Ball out of play": 0.514,
+ "Throw-in": 0.588,
+ "Foul": 0.597,
+ "Indirect free-kick": 0.422,
+ "Direct free-kick": 0.83,
+ "Corner": 0.859,
+ "Yellow card": 0.805,
+ "Red card": 0.6,
+ "Yellow->red card": 0.9
+}

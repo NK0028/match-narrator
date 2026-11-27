@@ -1,0 +1,121 @@
+{
+ "Penalty": {
+  "threshold": 0.6,
+  "F": 0.714,
+  "precision": 0.75,
+  "recall": 0.6,
+  "n_gt": 5
+ },
+ "Kick-off": {
+  "threshold": 0.868,
+  "F": 0.657,
+  "precision": 0.848,
+  "recall": 0.346,
+  "n_gt": 81
+ },
+ "Goal": {
+  "threshold": 0.894,
+  "F": 0.734,
+  "precision": 0.839,
+  "recall": 0.491,
+  "n_gt": 53
+ },
+ "Substitution": {
+  "threshold": 0.86,
+  "F": 0.599,
+  "precision": 0.638,
+  "recall": 0.481,
+  "n_gt": 77
+ },
+ "Offside": {
+  "threshold": 0.833,
+  "F": 0.449,
+  "precision": 0.7,
+  "recall": 0.184,
+  "n_gt": 38
+ },
+ "Shots on target": {
+  "threshold": 0.752,
+  "F": 0.419,
+  "precision": 0.479,
+  "recall": 0.279,
+  "n_gt": 165
+ },
+ "Shots off target": {
+  "threshold": 0.852,
+  "F": 0.424,
+  "precision": 0.487,
+  "recall": 0.279,
+  "n_gt": 140
+ },
+ "Clearance": {
+  "threshold": 0.757,
+  "F": 0.492,
+  "precision": 0.644,
+  "recall": 0.252,
+  "n_gt": 230
+ },
+ "Ball out of play": {
+  "threshold": 0.514,
+  "F": 0.676,
+  "precision": 0.719,
+  "recall": 0.546,
+  "n_gt": 940
+ },
+ "Throw-in": {
+  "threshold": 0.588,
+  "F": 0.523,
+  "precision": 0.586,
+  "recall": 0.367,
+  "n_gt": 529
+ },
+ "Foul": {
+  "threshold": 0.597,
+  "F": 0.549,
+  "precision": 0.629,
+  "recall": 0.363,
+  "n_gt": 248
+ },
+ "Indirect free-kick": {
+  "threshold": 0.422,
+  "F": 0.177,
+  "precision": 0.159,
+  "recall": 0.313,
+  "n_gt": 163
+ },
+ "Direct free-kick": {
+  "threshold": 0.83,
+  "F": 0.769,
+  "precision": 0.889,
+  "recall": 0.5,
+  "n_gt": 64
+ },
+ "Corner": {
+  "threshold": 0.859,
+  "F": 0.768,
+  "precision": 0.862,
+  "recall": 0.536,
+  "n_gt": 140
+ },
+ "Yellow card": {
+  "threshold": 0.805,
+  "F": 0.5,
+  "precision": 0.49,
+  "recall": 0.545,
+  "n_gt": 44
+ },
+ "Red card": {
+  "threshold": 0.6,
+  "F": 0.294,
+  "precision": 0.25,
+  "recall": 1.0,
+  "n_gt": 1
+ },
+ "Yellow->red card": {
+  "threshold": 0.9,
+  "F": 0.0,
+  "precision": 0.0,
+  "recall": 0.0,
+  "n_gt": 0
+ }
+}

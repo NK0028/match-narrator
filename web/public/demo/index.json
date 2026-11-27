@@ -1,0 +1,23 @@
+[
+ {
+  "id": "2015-08-23-15-30-west-brom-2-3-chelsea-h1-1080-1560",
+  "title": "West Brom v Chelsea \u00b7 18'\u201326'",
+  "duration": 480.0,
+  "n_events": 13,
+  "n_lines": 7
+ },
+ {
+  "id": "2015-09-20-18-00-southampton-2-3-manchester-united-h1-1800-2160",
+  "title": "Southampton v Man Utd \u00b7 30'\u201336'",
+  "duration": 360.0,
+  "n_events": 4,
+  "n_lines": 2
+ },
+ {
+  "id": "2016-09-24-14-30-manchester-united-4-1-leicester-h1-2100-2520",
+  "title": "Man Utd v Leicester \u00b7 35'\u201342'",
+  "duration": 420.0,
+  "n_events": 8,
+  "n_lines": 6
+ }
+]

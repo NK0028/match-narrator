@@ -1,0 +1,18 @@
+# runtime (pipeline + API)
+numpy>=1.26,<2.3
+torch>=2.2
+torchvision>=0.17
+opencv-python-headless>=4.9
+scikit-learn>=1.4
+pydantic>=2.6
+fastapi>=0.110
+uvicorn[standard]>=0.29
+python-multipart>=0.0.9
+imageio-ffmpeg>=0.5
+anthropic>=0.75
+# context layer (YOLO + ByteTrack)
+ultralytics>=8.3
+lap>=0.5
+# data + official evaluation
+SoccerNet>=0.2
+# optional extras: easyocr (jersey numbers), TTS (Coqui voice), pyttsx3

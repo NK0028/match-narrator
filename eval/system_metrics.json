@@ -1,0 +1,112 @@
+{
+  "n_games": 50,
+  "tolerance_s": 10.0,
+  "narrated_events": {
+    "precision": 0.706,
+    "recall": 0.338,
+    "tp": 1173,
+    "fp": 488,
+    "fn": 2293
+  },
+  "per_type": {
+    "goal": {
+      "precision": 0.646,
+      "recall": 0.315,
+      "tp": 51,
+      "fp": 28,
+      "fn": 111
+    },
+    "shot": {
+      "precision": 0.632,
+      "recall": 0.241,
+      "tp": 220,
+      "fp": 128,
+      "fn": 694
+    },
+    "corner": {
+      "precision": 0.83,
+      "recall": 0.519,
+      "tp": 235,
+      "fp": 48,
+      "fn": 218
+    },
+    "card": {
+      "precision": 0.443,
+      "recall": 0.368,
+      "tp": 74,
+      "fp": 93,
+      "fn": 127
+    },
+    "kickoff": {
+      "precision": 0.74,
+      "recall": 0.626,
+      "tp": 77,
+      "fp": 27,
+      "fn": 46
+    },
+    "substitution": {
+      "precision": 0.788,
+      "recall": 0.589,
+      "tp": 152,
+      "fp": 41,
+      "fn": 106
+    },
+    "penalty": {
+      "precision": 0.5,
+      "recall": 0.333,
+      "tp": 2,
+      "fp": 2,
+      "fn": 4
+    },
+    "red_card": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 11
+    },
+    "offside": {
+      "precision": 0.694,
+      "recall": 0.121,
+      "tp": 25,
+      "fp": 11,
+      "fn": 182
+    },
+    "free_kick": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 0
+    },
+    "foul": {
+      "precision": 0.754,
+      "recall": 0.298,
+      "tp": 337,
+      "fp": 110,
+      "fn": 794
+    }
+  },
+  "system_hallucination_rate": 0.272,
+  "linguistic_hallucination_rate": 0.0,
+  "team_head_accuracy": 0.544,
+  "team_n": 1221,
+  "team_named_in_commentary": false,
+  "lines_total": 3220,
+  "lines_per_minute": 0.72,
+  "text_metrics_vs_soccernet_caption": {
+    "BLEU-1": 0.012,
+    "BLEU-4": 0.0018,
+    "ROUGE-L": 0.0923,
+    "METEOR-lite": 0.0529,
+    "CIDEr-D": 0.0381,
+    "n": 1238
+  },
+  "latency": {
+    "spotting_full_half_s": 0.65,
+    "spotting_per_10min_clip_s": 0.14,
+    "spotter_params": 720980,
+    "spotter_size_mb": 2.75,
+    "template_generation_per_half_ms": 0.56
+  }
+}
