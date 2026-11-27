@@ -137,3 +137,82 @@ def render(ev: Event, idx: int = 0, lang: str = "en", seed: int = 0, match=None)
     text = tpl.format(player=player, team=team)
     # Tidy the "a player" / "attacking side" phrasings at sentence start.
     return text[0].upper() + text[1:]
+
+
+# ---- live play-by-play (commentator/live) ---------------------------------------------
+# A variant is usable only if every {field} it names is a measured fact for this moment,
+# so lines without a known team/direction fall back to the generic variants.
+LIVE_TEMPLATES: dict[str, dict[str, list[str]]] = {
+    "en": {
+        "pass": [
+            "{team} knock it about.", "Neat pass from the {team} side.", "{team} keep it moving.",
+            "Simple ball, {team} retain possession.", "That's {chain} passes on the bounce for {team}.",
+            "{team} stringing them together now, {chain} in a row.", "Patient from {team}.",
+            "Played on.", "A tidy little pass.", "Keeping the ball nicely.",
+        ],
+        "possession": [
+            "{team} have it now.", "{team} pick it up.", "The ball's with {team}.",
+            "{team} take control.", "Someone gathers it.", "It's picked up.",
+        ],
+        "turnover": [
+            "{team} win it back!", "Turned over, {team} have it now.", "{opponent} give it away, {team} pounce.",
+            "Possession changes hands, {team} on the ball.", "Lost it! {team} take over.",
+            "Won back by {team}.", "And it's given away.",
+        ],
+        "carry": [
+            "{team} drive forward with it.", "Carried on by {team}, heading {direction}.",
+            "Running at them, {team} on the move.", "Space to run into for {team}.",
+            "He's away with it.", "Driving on with the ball.",
+        ],
+        "attack": [
+            "{team} pour forward, play heading {direction}!", "{team} on the attack now!",
+            "Here come {team}, moving it {direction}.", "{team} building something here.",
+            "Momentum with {team}, they're pushing on.", "Play swings {direction}.", "They're pushing forward now.",
+        ],
+        "roar": [
+            "Listen to that crowd!", "The crowd are on their feet!", "Huge noise inside the stadium!",
+            "That's got the fans going!", "What a roar from the stands!",
+        ],
+        "close_up": [
+            "A closer look now.", "The camera picks out the moment.", "Let's have another look.",
+            "A pause in the action.", "Players catching their breath.",
+        ],
+        "stats": [
+            "{team} have seen {possession_pct} percent of the ball so far.",
+            "{team} dominating possession, {possession_pct} percent of it.",
+            "{passes} passes so far for {team}.", "{team} are seeing plenty of the ball.",
+            "A cagey spell, nobody quite in control.", "Plenty of football still to play.",
+        ],
+    },
+    "ur": {
+        "pass": ["{team} گیند گھما رہے ہیں۔", "خوبصورت پاس، {team}۔", "{team} کے مسلسل {chain} پاس۔", "گیند آگے بڑھائی گئی۔"],
+        "possession": ["اب گیند {team} کے پاس ہے۔", "گیند سنبھال لی گئی۔"],
+        "turnover": ["{team} نے گیند چھین لی!", "گیند ہاتھ سے نکل گئی!"],
+        "carry": ["{team} گیند لے کر آگے بڑھ رہے ہیں۔", "گیند کے ساتھ دوڑ!"],
+        "attack": ["{team} حملہ آور ہیں!", "کھیل {direction} کی طرف جا رہا ہے۔", "حملہ جاری ہے!"],
+        "roar": ["تماشائیوں کا شور سنیے!", "اسٹیڈیم گونج اٹھا!"],
+        "close_up": ["ایک قریبی منظر۔", "کھیل میں ایک وقفہ۔"],
+        "stats": ["{team} کے پاس {possession_pct} فیصد گیند رہی ہے۔", "ابھی بہت کھیل باقی ہے۔"],
+    },
+}
+UR_DIRECTION = {"left": "بائیں", "right": "دائیں"}
+
+_FIELD = __import__("re").compile(r"{(\w+)}")
+
+
+def render_live(ev: Event, idx: int = 0, lang: str = "en", seed: int = 0, avoid: set[str] | None = None) -> str:
+    lang = lang if lang in LIVE_TEMPLATES else "en"
+    m = ev.meta
+    facts = {"team": ev.team, "opponent": m.get("opponent"), "chain": m.get("pass_chain"),
+             "direction": m.get("direction"), "possession_pct": m.get("possession_pct"), "passes": m.get("passes")}
+    if lang == "ur" and facts["direction"]:
+        facts["direction"] = UR_DIRECTION.get(facts["direction"], facts["direction"])
+    if facts["chain"] is not None and facts["chain"] < 3:
+        facts["chain"] = None  # "2 passes in a row" isn't worth saying
+    have = {k for k, v in facts.items() if v is not None}
+    variants = LIVE_TEMPLATES[lang].get(ev.event) or LIVE_TEMPLATES["en"][ev.event]
+    ok = [v for v in variants if set(_FIELD.findall(v)) <= have]
+    fresh = [v for v in ok if v not in (avoid or set())] or ok
+    rng = random.Random(f"{seed}-{idx}-{ev.event}-{ev.t}")
+    text = rng.choice(fresh).format(**{k: v for k, v in facts.items() if v is not None})
+    return text[0].upper() + text[1:]

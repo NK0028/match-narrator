@@ -19,7 +19,15 @@ import torch
 from .data import FPS
 
 
-def extract(video: str, device=None, batch: int = 32, pca_dir: str = "models") -> np.ndarray:
+PCA_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "models")
+
+
+def has_pca(pca_dir: str = PCA_DIR) -> bool:
+    return all(os.path.exists(os.path.join(pca_dir, f)) for f in ("pca_512_TF2.pkl", "average_512_TF2.pkl"))
+
+
+def extract(video: str, device=None, batch: int = 32, pca_dir: str = PCA_DIR,
+            t0: float = 0.0, t1: float | None = None) -> np.ndarray:
     import torchvision
 
     device = device or ("mps" if torch.backends.mps.is_available() else "cpu")
@@ -32,8 +40,12 @@ def extract(video: str, device=None, batch: int = 32, pca_dir: str = "models") -
     cap = cv2.VideoCapture(video)
     fps = cap.get(cv2.CAP_PROP_FPS) or 25.0
     n = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    want = [int(round(i * fps / FPS)) for i in range(int(n / fps * FPS))]
-    frames, feats, fi, wi = [], [], 0, 0
+    end = min(n / fps, t1) if t1 is not None else n / fps
+    want = [int(round(i * fps / FPS)) for i in range(int(t0 * FPS), int(end * FPS))]
+    fi = want[0] if want else 0
+    if fi:
+        cap.set(cv2.CAP_PROP_POS_FRAMES, fi)
+    frames, feats, wi = [], [], 0
     while wi < len(want):
         ok, f = cap.read()
         if not ok:

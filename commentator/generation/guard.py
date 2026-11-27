@@ -20,7 +20,13 @@ KEYWORDS: dict[str, set[str]] = {
     r"\bshot\b|\bstrike\b|\bshoots?\b|\blets fly\b|\bsave[sd]?\b|\bkeeper\b": {"shot", "goal", "penalty"},
     r"\bfoul\b|\bwhistle\b": {"foul", "free_kick", "card", "red_card", "penalty", "offside"},
     r"\bfree[- ]kick\b|\bset piece\b": {"free_kick", "foul", "card", "red_card"},
+    # live play-by-play moments
+    r"\bwins? (it|the ball)\b|\bwon back\b|\bintercept|\bturn(ed|s)? over\b|\bgive[sn]? it away\b|\bpounce|\bsteal": {"turnover"},
+    r"\bcrowd\b|\broar|\bfans\b|\bstands\b|\bon their feet\b": {"roar", "goal"},
+    r"\bpercent\b|%": {"stats"},
 }
+
+DIRECTION = re.compile(r"\b(left|right)\b")
 
 NUMBER = re.compile(r"#?\b(\d{1,2})\b")
 
@@ -33,6 +39,10 @@ def violations(text: str, event: dict, allowed_names: set[str] | None = None) ->
     for pat, licensed in KEYWORDS.items():
         if re.search(pat, t) and ev not in licensed:
             out.append(f"mentions '{re.search(pat, t).group(0)}' but event is {ev}")
+    # Direction of play must be the measured one (no pitch map, so only left/right of screen)
+    for m in DIRECTION.finditer(t):
+        if event.get("direction") != m.group(1):
+            out.append(f"direction '{m.group(1)}' not measured")
     # Jersey numbers / scores must come from the facts
     fact_text = " ".join(str(v) for v in event.values()).lower()
     for m in NUMBER.finditer(t):
@@ -61,10 +71,10 @@ def is_grounded(text: str, event: dict, allowed_names: set[str] | None = None) -
 
 
 def _template_vocab() -> set[str]:
-    from .templates import NO_TEMPLATE_WORDS, NO_TEAM, TEMPLATES
+    from .templates import LIVE_TEMPLATES, NO_TEMPLATE_WORDS, NO_TEAM, TEMPLATES
 
     words = set()
-    for table in (TEMPLATES, NO_TEAM):
+    for table in (TEMPLATES, NO_TEAM, LIVE_TEMPLATES):
         for lang in table.values():
             for variants in lang.values():
                 for v in variants:

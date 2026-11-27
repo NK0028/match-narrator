@@ -151,9 +151,13 @@ def run_video(video: str, events_path: str | None = None, ckpt: str = SPOTTER,
         with open(events_path) as f:
             events = [Event(**e) for e in json.load(f)]
     else:
-        from .spotting.features import extract
+        from .spotting.features import extract, has_pca
 
-        events = spot_features(extract(video), ckpt)
+        if has_pca():
+            events = spot_features(extract(video), ckpt)
+        else:  # torchvision features are 2048-d; the spotter needs SoccerNet's PCA-512
+            log.warning("spotting skipped: models/pca_512_TF2.pkl missing (supply an events JSON)")
+            events = []
     if context and events:
         try:
             from .context.tagging import ContextExtractor
