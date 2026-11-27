@@ -1,0 +1,50 @@
+{
+ "video": "broadcast highlights clip (11.7 min, 1080p, 25 fps)",
+ "duration_s": 701.9,
+ "lines": 119,
+ "lines_per_minute": 10.2,
+ "speech_coverage_pct": 36.4,
+ "gap_p50_s": 4.28,
+ "gap_p95_s": 5.32,
+ "gap_max_s": 5.39,
+ "overlaps": 0,
+ "llm_lines_pct": 0.0,
+ "by_type": {
+  "close_up": 40,
+  "play": 31,
+  "possession": 1,
+  "attack": 24,
+  "carry": 1,
+  "stats": 17,
+  "turnover": 3,
+  "roar": 2
+ },
+ "kits": [
+  "red",
+  "white"
+ ],
+ "match_stats": {
+  "possession_pct": {
+   "white": 77,
+   "red": 23
+  },
+  "passes": {},
+  "turnovers": 4,
+  "roars": 2,
+  "longest_chain": 0
+ },
+ "wall_s": 455.0,
+ "x_realtime": 1.54,
+ "llm_calls": 0,
+ "llm_latency_p50": null,
+ "llm_latency_p95": null,
+ "llm_late": 0,
+ "llm_rejected": 0,
+ "roars": 2,
+ "frames": 2925,
+ "wide": 1306,
+ "ball_wide": 714,
+ "holder": 223,
+ "ball_rate_wide": 0.547,
+ "holder_rate_wide": 0.171
+}

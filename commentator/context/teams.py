@@ -22,14 +22,28 @@ NAMED = {
 
 
 def colour_name(rgb: np.ndarray) -> str:
-    lab = cv2.cvtColor(np.uint8([[rgb]]), cv2.COLOR_RGB2LAB)[0, 0].astype(float)
-    best, bd = "unknown", 1e9
-    for name, ref in NAMED.items():
-        rl = cv2.cvtColor(np.uint8([[ref]]), cv2.COLOR_RGB2LAB)[0, 0].astype(float)
-        d = np.linalg.norm(lab - rl)
-        if d < bd:
-            best, bd = name, d
-    return best
+    """Readable kit colour from hue/saturation/value rules (robust to shadow and floodlights,
+    unlike nearest-reference matching, which calls a shaded white shirt "sky blue")."""
+    h, sat, v = (int(x) for x in cv2.cvtColor(np.uint8([[np.clip(rgb, 0, 255)]]), cv2.COLOR_RGB2HSV)[0, 0])
+    if sat < 50:
+        return "white" if v >= 125 else "black" if v < 65 else "grey"  # shaded white shirts sit ~130-150
+    if v < 60:
+        return "black"
+    if h < 8 or h >= 165:
+        return "dark red" if v < 90 else "red"
+    if h < 20:
+        return "orange"
+    if h < 34:
+        return "yellow"
+    if h < 85:
+        return "green"
+    if h < 100:
+        return "sky blue"
+    if h < 130:
+        return "navy" if v < 100 else "blue"
+    if h < 150:
+        return "purple"
+    return "claret" if v < 130 else "pink"
 
 
 def jersey_colour(frame_bgr: np.ndarray, box: tuple[float, float, float, float]) -> np.ndarray | None:

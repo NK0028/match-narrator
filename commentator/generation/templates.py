@@ -175,13 +175,23 @@ LIVE_TEMPLATES: dict[str, dict[str, list[str]]] = {
         ],
         "close_up": [
             "A closer look now.", "The camera picks out the moment.", "Let's have another look.",
-            "A pause in the action.", "Players catching their breath.",
+            "A pause in the action.", "Players catching their breath.", "The camera moves in close.",
+            "A moment to take stock.", "Tight on the players now.", "The director goes in close.",
+            "Up close with the players.", "A quick breather.", "Taking a moment here.",
         ],
         "stats": [
             "{team} have seen {possession_pct} percent of the ball so far.",
             "{team} dominating possession, {possession_pct} percent of it.",
-            "{passes} passes so far for {team}.", "{team} are seeing plenty of the ball.",
+            "{passes} passes completed so far by {team}.", "{team} are seeing plenty of the ball.",
             "A cagey spell, nobody quite in control.", "Plenty of football still to play.",
+        ],
+        "play": [
+            "{team} keeping hold of it.", "{team} probing, looking for an opening.", "{team} on the ball, moving it {direction}.",
+            "Still {team} in possession.", "{team} working it {direction}.", "{team} trying to make something happen.",
+            "{opponent} chasing the ball.", "{opponent} pressing.",
+            "The ball's being worked around.", "Plenty of bodies around the ball.", "Looking for a way through.",
+            "Back and forth it goes.", "The game's opening up now.", "Searching for space.",
+            "Both sides fighting for every ball.", "A scrappy spell.",
         ],
     },
     "ur": {
@@ -193,6 +203,7 @@ LIVE_TEMPLATES: dict[str, dict[str, list[str]]] = {
         "roar": ["تماشائیوں کا شور سنیے!", "اسٹیڈیم گونج اٹھا!"],
         "close_up": ["ایک قریبی منظر۔", "کھیل میں ایک وقفہ۔"],
         "stats": ["{team} کے پاس {possession_pct} فیصد گیند رہی ہے۔", "ابھی بہت کھیل باقی ہے۔"],
+        "play": ["{team} گیند اپنے پاس رکھے ہوئے ہیں۔", "کھیل جاری ہے۔", "جگہ کی تلاش جاری ہے۔", "دونوں ٹیمیں ہر گیند کے لیے لڑ رہی ہیں۔"],
     },
 }
 UR_DIRECTION = {"left": "بائیں", "right": "دائیں"}

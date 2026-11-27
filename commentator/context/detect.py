@@ -69,6 +69,15 @@ class ClipTracker:
         self.device = device
         # the ball is tiny in wide broadcast shots; a larger input size helps ball recall
         self.imgsz = imgsz or int(os.environ.get("YOLO_IMGSZ", "640"))
+        self.ball_conf = 0.2
+
+    @staticmethod
+    def _new_tracker():
+        from ultralytics.trackers.byte_tracker import BYTETracker
+        from ultralytics.utils import IterableSimpleNamespace, YAML
+        from ultralytics.utils.checks import check_yaml
+
+        return BYTETracker(IterableSimpleNamespace(**YAML.load(check_yaml("bytetrack.yaml"))))
 
     def track_window(self, video: str, t0: float, t1: float, sample_fps: float = 5.0,
                      keep_frames: bool = True) -> list[FrameDets]:
@@ -86,7 +95,7 @@ class ClipTracker:
         step = max(1, int(round(fps / sample_fps)))
         if start:
             cap.set(cv2.CAP_PROP_POS_FRAMES, start)
-        prev, shot, persist = None, 0, False
+        prev, shot, persist, tracker = None, 0, False, None
         try:
             for fi in range(start, stop + 1):
                 ok = cap.grab()
@@ -101,20 +110,26 @@ class ClipTracker:
                     shot += 1
                     persist = False  # new shot -> new IDs (reset tracker)
                 prev = frame
-                res = self.model.track(frame, persist=persist, tracker="bytetrack.yaml", conf=self.conf,
-                                       classes=[PERSON, BALL], verbose=False, device=self.device,
-                                       imgsz=self.imgsz)[0]
+                # Detect once, then track players only: ByteTrack drops the ball (tiny, fast,
+                # rarely IoU-matched between samples), so the ball comes from raw detections.
+                res = self.model.predict(frame, conf=0.1, classes=[PERSON, BALL], verbose=False,
+                                         device=self.device, imgsz=self.imgsz)[0]
+                if not persist or tracker is None:
+                    tracker = self._new_tracker()
                 persist = True
                 fd = FrameDets(t=fi / fps, frame=frame if keep_frames else None, shot_id=shot)
-                if res.boxes is not None and len(res.boxes):
-                    ids = res.boxes.id.int().tolist() if res.boxes.id is not None else [None] * len(res.boxes)
-                    for box, c, cf, tid in zip(res.boxes.xyxy.tolist(), res.boxes.cls.int().tolist(),
-                                               res.boxes.conf.tolist(), ids):
-                        d = Detection(tid, c, tuple(box), cf)
-                        if c == PERSON:
-                            fd.players.append(d)
-                        elif c == BALL and (fd.ball is None or cf > fd.ball.conf):
-                            fd.ball = d
+                boxes = res.boxes.cpu().numpy() if res.boxes is not None else None
+                if boxes is not None and len(boxes):
+                    cls = boxes.cls.astype(int)
+                    people = boxes[cls == PERSON]
+                    if len(people):
+                        for row in tracker.update(people, frame):
+                            x1, y1, x2, y2, tid, score = row[:6]
+                            fd.players.append(Detection(int(tid), PERSON, (x1, y1, x2, y2), float(score)))
+                    for i in np.where(cls == BALL)[0]:
+                        cf = float(boxes.conf[i])
+                        if cf >= self.ball_conf and (fd.ball is None or cf > fd.ball.conf):
+                            fd.ball = Detection(None, BALL, tuple(boxes.xyxy[i].tolist()), cf)
                 yield fd
         finally:
             cap.release()

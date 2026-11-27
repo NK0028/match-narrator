@@ -118,12 +118,28 @@ streams lines over server-sent events, like a broadcast delay. If playback catch
   from `?since=`, so a dropped connection resumes. A finished session is saved as a normal clip.
 - The browser speaks the lines with the Web Speech API and ducks the match audio under the voice.
 
+**Measured** on an 11.7-minute 1080p broadcast highlights clip (templates only, Apple M1 Pro), using
+`eval/live_metrics.json`:
+
+| | |
+|---|---|
+| Analysis speed (YOLO11n at 1280 px, 4 fps) | **1.5× real time**; the 10 s buffer is ready ~9 s after upload |
+| Lines per minute / speech coverage | 10.2 / 36% |
+| Silence between lines: median / p95 / max | 4.3 s / 5.3 s / **5.4 s** |
+| Overlapping lines | 0 |
+| Ball found in wide frames / ball holder found | 55% / 17% |
+| Kits named | red vs white (correct) |
+
+Honest reading: highlights cut every few seconds, so tracked passes are rare and much of the talk is
+state-of-play and camera filler rather than pass-by-pass calls. Possession % is a rough tracker estimate.
+YOLO's input size mattered most: at 640 px the ball is found in about 5% of wide frames.
+
 Measure it on your own clip: `python eval/live_eval.py match.mp4`. It writes `eval/live_metrics.json` (speed,
 speech coverage, gaps, Claude latency, ball-detection rate) and a 30-line `eval/live_spotcheck.csv`.
 
 Live-mode limits:
 - With no pitch homography, direction is screen-relative ("play swings left"), not pitch zones.
-- Possession is a nearest-player heuristic that gets noisy when the ball is hidden or tiny. Try `YOLO_IMGSZ=1280`.
+- Possession is a nearest-player heuristic that gets noisy when the ball is hidden or tiny, and in highlights full of cuts.
 - Kits are named by colour, and player names would need readable numbers plus a roster.
 - The raw-video spotter is opt-in (`LIVE_SPOTTER=1`, plus SoccerNet's `pca_512_TF2.pkl` / `average_512_TF2.pkl`
   in `models/`), because torchvision features differ from SoccerNet's.
@@ -146,7 +162,8 @@ Live-mode limits:
 | `YOLO_WEIGHTS` | `yolo11n.pt` | detector weights |
 | `ALLOW_UPLOADS`, `MAX_UPLOAD_MB` | `1`, `4096` | upload / live endpoint controls (lower the limit when hosting) |
 | `COMMENTARY_LIVE_MODEL` | `claude-haiku-5-5` | Claude model for live play-by-play lines |
-| `YOLO_IMGSZ` | `640` | detector input size; 1280 finds more balls in wide shots, at ~3× the cost |
+| `YOLO_IMGSZ` | `1280` in live mode (`640` elsewhere) | detector input size; at 640 the ball is found in ~5% of wide 1080p frames |
+| `LIVE_SAMPLE_FPS` | `4` | frames analysed per second in live mode |
 | `LIVE_SPOTTER` | unset | `1` runs the SoccerNet spotter on raw video in live mode (needs the PCA files) |
 
 ## Known limitations (v1 scope)

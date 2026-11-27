@@ -146,6 +146,20 @@ def test_big_moment_preempts_queue():
     lines = drive(d, evs, 30)
     roar = [ln for ln in lines if ln.event == "roar"]
     assert roar and abs(roar[0].t - 20.3) < 0.05 and roar[0].excitement >= 0.7
+    for a, b in zip(lines, lines[1:]):
+        assert b.t >= a.end - 1e-6  # the interrupted line is cut short, not talked over
+
+
+def test_filler_never_claims_unmeasured_stats():
+    det = MomentDetector()
+    det.kits = {"red", "white"}
+    det.stats.possession_s = {"red": 5.0}  # 5 s of data is not "100 percent of the ball"
+    ev = det.stats_event(10.0)
+    assert ev.team is None and "possession_pct" not in ev.meta
+    d = Director(stats_fn=det.filler_event)
+    lines = drive(d, [], 30)
+    assert lines and all("percent" not in ln.text for ln in lines)
+    assert max(b.t - a.end for a, b in zip(lines, lines[1:])) < 7.0
 
 
 class FakeLLM:

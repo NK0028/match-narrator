@@ -26,9 +26,10 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("video")
     ap.add_argument("--no-llm", action="store_true")
-    ap.add_argument("--imgsz", type=int, default=None, help="YOLO input size (default 640; 1280 finds more balls)")
+    ap.add_argument("--imgsz", type=int, default=None, help="YOLO input size (live default 1280; 640 misses most balls)")
     ap.add_argument("--lang", default="en")
     ap.add_argument("--out", default="outputs/clips/live-eval")
+    ap.add_argument("--label", help="how to name the clip in the metrics (default: its file name)")
     a = ap.parse_args()
     if a.imgsz:
         os.environ["YOLO_IMGSZ"] = str(a.imgsz)
@@ -52,7 +53,7 @@ def main() -> None:
     for ln in L:
         by_type[ln.event] = by_type.get(ln.event, 0) + 1
     metrics = {
-        "video": os.path.basename(a.video), "duration_s": round(dur, 1), "lines": len(L),
+        "video": a.label or os.path.basename(a.video), "duration_s": round(dur, 1), "lines": len(L),
         "lines_per_minute": round(per_min, 1),
         "speech_coverage_pct": round(100 * spoken / dur, 1) if dur else 0,
         "gap_p50_s": round(float(np.percentile(gaps, 50)), 2), "gap_p95_s": round(float(np.percentile(gaps, 95)), 2),

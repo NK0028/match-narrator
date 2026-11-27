@@ -25,7 +25,7 @@ EventType = Literal[
     "penalty", "offside", "foul", "free_kick", "red_card", "clearance", "throw_in",
     "ball_out",
     # live play-by-play moments (from tracking + crowd audio, see commentator/live/)
-    "pass", "possession", "turnover", "carry", "attack", "roar", "close_up", "stats",
+    "pass", "possession", "turnover", "carry", "attack", "roar", "close_up", "stats", "play",
 ]
 
 SOCCERNET_TO_EVENT: dict[str, EventType] = {
@@ -64,11 +64,11 @@ IMPORTANCE: dict[str, int] = {
     "corner": 4, "free_kick": 4, "substitution": 3, "offside": 3, "foul": 2,
     "clearance": 1, "throw_in": 1, "ball_out": 0,
     "roar": 7, "attack": 5, "turnover": 3, "possession": 2, "carry": 2, "pass": 1,
-    "close_up": 1, "stats": 0,
+    "close_up": 1, "stats": 0, "play": 0,
 }
 
 # Live moment types: narrated continuously in live mode, never by the batch generator.
-LIVE_TYPES: set[str] = {"pass", "possession", "turnover", "carry", "attack", "roar", "close_up", "stats"}
+LIVE_TYPES: set[str] = {"pass", "possession", "turnover", "carry", "attack", "roar", "close_up", "stats", "play"}
 
 
 def fmt_clock(seconds: float) -> str:

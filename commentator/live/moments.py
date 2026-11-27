@@ -55,6 +55,7 @@ class MomentDetector:
         self._view: str | None = None
         self._view_since = 0.0
         self._closeup_said_shot: int | None = None
+        self._last_closeup = -1e9
         self._last_t: float | None = None
 
     # ---- helpers -------------------------------------------------------------------
@@ -76,7 +77,13 @@ class MomentDetector:
         dt = 0.0 if self._last_t is None else max(0.0, st.t - self._last_t)
         prev_t = self._last_t if self._last_t is not None else st.t
         self._last_t = st.t
-        self.kits |= set(st.team_counts)
+        if st.kits and set(st.kits) != self.kits:
+            self.kits = set(st.kits)  # kits refitted: forget stats under names that no longer exist
+            for d in (self.stats.possession_s, self.stats.passes):
+                for k in [k for k in d if k not in self.kits]:
+                    del d[k]
+            if self._team not in self.kits:
+                self._team, self._holder, self._cand, self._chain = None, None, None, 0
 
         # crowd roars (precomputed from the audio) as we pass them
         while self.roars and self.roars[0][0] <= st.t:
@@ -89,8 +96,8 @@ class MomentDetector:
         if st.view != self._view:
             self._view, self._view_since = st.view, st.t
         elif (st.view == "close_up" and st.t - self._view_since >= 2.0
-              and self._closeup_said_shot != st.shot_id):
-            self._closeup_said_shot = st.shot_id
+              and self._closeup_said_shot != st.shot_id and st.t - self._last_closeup >= 20.0):
+            self._closeup_said_shot, self._last_closeup = st.shot_id, st.t
             out.append(self._ev("close_up", self._view_since, self._team, conf=0.6))
 
         # camera pan window -> direction of play
@@ -122,7 +129,9 @@ class MomentDetector:
 
         # attack: sustained pan one way while a team has the ball
         d = self._direction()
-        if d and self._team and st.view == "wide" and st.t - self._last_attack >= self.attack_gap_s:
+        recent_ball = st.t - self._last_seen <= 3.0  # someone actually had it moments ago
+        if (d and self._team and recent_ball and st.view == "wide"
+                and st.t - self._last_attack >= self.attack_gap_s):
             self._last_attack = st.t
             out.append(self._ev("attack", st.t, self._team, conf=0.6, direction=d,
                                 pass_chain=self._chain or None))
@@ -152,5 +161,23 @@ class MomentDetector:
     def stats_event(self, t: float) -> Event:
         pct = self.stats.possession_pct()
         lead = max(pct, key=pct.get) if pct else None
-        return self._ev("stats", t, lead, conf=1.0, possession_pct=pct[lead] if lead else None,
-                        passes=self.stats.passes.get(lead) if lead else None)
+        enough = sum(self.stats.possession_s.values()) >= 60.0  # no "100 percent" after 5 seconds
+        passes = self.stats.passes.get(lead) if lead else None
+        return self._ev("stats", t, lead if enough else None, conf=1.0,
+                        possession_pct=pct[lead] if lead and enough else None,
+                        passes=passes if passes and passes >= 5 else None)
+
+    def filler_event(self, t: float) -> Event | None:
+        """Something true to say during a lull: the current state of play, or the stats."""
+        self._last_fill_stats = getattr(self, "_last_fill_stats", -1e9)
+        if t - self._last_fill_stats >= 30.0 and sum(self.stats.possession_s.values()) >= 60.0:
+            self._last_fill_stats = t
+            return self.stats_event(t)
+        recent = self._last_t is not None and self._last_t - self._last_seen <= 4.0
+        if self._view == "close_up":
+            if t - self._last_closeup < 6.0:
+                return None  # replays / celebrations: don't repeat "a closer look" every few seconds
+            self._last_closeup = t
+            return self._ev("close_up", t, None, conf=0.5)
+        return self._ev("play", t, self._team if recent else None, conf=0.5,
+                        direction=self._direction() if recent else None)

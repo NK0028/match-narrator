@@ -96,7 +96,7 @@ class LiveSession:
                     llm = llm_mod.LiveColour()
                 except Exception as e:
                     log.warning("live LLM disabled: %s", e)
-            director = Director(self.language, llm=llm, stats_fn=detector.stats_event)
+            director = Director(self.language, llm=llm, stats_fn=detector.filler_event)
             spotter = _ChunkSpotter(self.video, exc) if _ChunkSpotter.enabled() else None
             analyzer = PlayAnalyzer(tracker=self.tracker)
             last_pub = 0.0

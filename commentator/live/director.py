@@ -4,7 +4,7 @@ Rules (in priority order) each time media time advances:
 1. a big event (goal, card, crowd roar, ...) is said at once and pre-empts the queue;
 2. otherwise, when the commentator is free, the freshest moment younger than `stale_s`
    (stale moments are dropped — live commentary never narrates the past);
-3. otherwise, after `fill_s` of silence, a filler line from the running match stats.
+3. otherwise, after `fill_s` of silence, a filler line: the state of play, or the stats.
 
 Text comes from Claude when available (asynchronously, with a wall-clock deadline) and
 from templates otherwise; every Claude line must pass the grounding guard and fit the
@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import logging
 import time
-from concurrent.futures import Future, ThreadPoolExecutor
+from concurrent.futures import Future, ThreadPoolExecutor, wait
 from typing import Callable
 
 from ..generation.guard import is_grounded
@@ -40,10 +40,11 @@ class _Pending:
 
 class Director:
     def __init__(self, language: str = "en", llm=None, deadline_s: float = 3.0, stale_s: float = 3.0,
-                 fill_s: float = 5.0, gap_s: float = 0.4, seed: int = 0,
+                 fill_s: float = 3.5, fill_every_s: float = 6.0, gap_s: float = 0.4, seed: int = 0,
                  stats_fn: Callable[[float], Event] | None = None):
         self.language, self.llm, self.deadline_s = language, llm, deadline_s
         self.stale_s, self.fill_s, self.gap_s, self.seed = stale_s, fill_s, gap_s, seed
+        self.fill_every_s = fill_every_s
         self.stats_fn = stats_fn
         self.queue: list[Event] = []
         self.events: list[Event] = []  # everything narrated (grounding links)
@@ -56,6 +57,7 @@ class Director:
         self.llm_late = 0
         self._pool = ThreadPoolExecutor(max_workers=4) if llm else None
         self._last_filler = -1e9
+        self._last_line: CommentaryLine | None = None
 
     # -------------------------------------------------------------------------------
     def push(self, events: list[Event]) -> None:
@@ -81,7 +83,12 @@ class Director:
         if self._pool is not None and worth_llm:
             fut = self._pool.submit(self.llm.live_line, ev.facts(), list(self.recent),
                                     LANG_NAMES.get(self.language, "English"))
+        if interrupt:  # cut short whatever is still being said (the browser cancels its speech too)
+            for q in self.pending + ([_Pending(self._last_line, ev, None, 0)] if self._last_line else []):
+                if q.line.end > start:
+                    q.line.end = round(max(q.line.t + 0.5, start - 0.05), 2)
         self.pending.append(_Pending(line, ev, fut, slot))
+        self._last_line = line
         if interrupt:
             line.excitement = max(line.excitement, 0.9)
         self.n += 1
@@ -112,18 +119,22 @@ class Director:
             ev = max(fresh, key=lambda e: (IMPORTANCE[e.event], e.t))
             self._say(ev, max(start, ev.t + 0.3))
         # filler after a silence
-        if (self.stats_fn and now - self.free_at >= self.fill_s and now - self._last_filler >= 20.0):
+        if (self.stats_fn and now - self.free_at >= self.fill_s and now - self._last_filler >= self.fill_every_s):
             ev = self.stats_fn(self.free_at + 0.5)
-            self._last_filler = now
-            self._say(ev, max(self.free_at, now - 0.5))
+            if ev is not None:  # None = nothing true to say right now; ask again next tick
+                self._last_filler = now
+                self._say(ev, max(self.free_at, now - 0.5))
 
     def collect(self, force: bool = False) -> list[CommentaryLine]:
         """Finalised lines in order: Claude's text if it arrived in time and is grounded."""
         out: list[CommentaryLine] = []
         while self.pending:
             p = self.pending[0]
+            left = self.deadline_s - (time.monotonic() - p.submitted)
+            if p.future is not None and not p.future.done() and force and left > 0:
+                wait([p.future], timeout=left)  # end of stream: still honour each line's deadline
             if p.future is not None and not p.future.done():
-                if not force and time.monotonic() - p.submitted < self.deadline_s:
+                if not force and left > 0:
                     break
                 p.future.cancel()
                 self.llm_late += 1
