@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Line, LiveStats, openLiveStream, startLive } from "./api";
+import { getLiveSnapshot, Line, LiveStats, openLiveStream, startLive } from "./api";
 
 const ICON: Record<string, string> = {
   pass: "↗️", possession: "🟢", turnover: "🔄", carry: "🏃", attack: "⚡", roar: "📣", close_up: "🎥",
@@ -11,6 +11,11 @@ const START_BUFFER_S = 10; // broadcast delay before playback starts
 const RESUME_BUFFER_S = 6; // after a stall, wait for this much commentary ahead
 const STALL_MARGIN_S = 2; // pause when playback gets this close to ready commentary
 const STALE_SPEECH_S = 1.5; // don't speak a line that's already this far behind the video
+const posKey = (sid: string) => `live-pos-${sid}`;
+const store = {
+  get: (k: string) => { try { return localStorage.getItem(k); } catch { return null; } },
+  set: (k: string, v: string) => { try { localStorage.setItem(k, v); } catch { /* storage blocked */ } },
+};
 
 type Status = "idle" | "uploading" | "running" | "finalizing" | "done" | "error";
 
@@ -34,14 +39,42 @@ export default function LivePlayer({ onFinished }: { onFinished?: (clipId: strin
   const [buffering, setBuffering] = useState(false);
   const [voice, setVoice] = useState(true);
   const [captions, setCaptions] = useState(true);
+  const [resumeAt, setResumeAt] = useState<number | null>(null); // reloaded page: waits for a click
 
   // refs mirror state for the animation loop
   const r = useRef({ lines: [] as Line[], readyT: 0, status: "idle" as Status, autoPaused: false, started: false,
-    spoken: new Set<number>(), voice: true, language: "en" });
+    spoken: new Set<number>(), voice: true, language: "en", needsClick: false, sid: null as string | null, savedAt: 0 });
   r.current.lines = lines; r.current.readyT = readyT; r.current.status = status;
-  r.current.voice = voice; r.current.language = language;
+  r.current.voice = voice; r.current.language = language; r.current.sid = sid;
 
-  useEffect(() => () => { if (src) URL.revokeObjectURL(src); }, [src]);
+  useEffect(() => () => { if (src?.startsWith("blob:")) URL.revokeObjectURL(src); }, [src]);
+
+  // a reloaded page (#live/<session id>) reattaches to the session and plays the server's copy
+  useEffect(() => {
+    const m = location.hash.match(/^#live\/([\w-]+)$/);
+    if (!m) return;
+    const id = m[1];
+    getLiveSnapshot(id).then((snap) => {
+      if (!snap) { location.hash = "live"; return; }
+      setLanguage(snap.language || "en");
+      setDuration(snap.duration);
+      setStatus(snap.status === "queued" ? "running" : (snap.status as Status));
+      if (snap.error) setError(snap.error);
+      r.current.needsClick = true;
+      setResumeAt(Number(store.get(posKey(id)) ?? 0) || 0);
+      setSrc(`api/live/${id}/video`);
+      setSid(id);
+    }).catch((e) => setError(String(e instanceof Error ? e.message : e)));
+  }, []);
+
+  const resume = () => {
+    const v = video.current;
+    window.speechSynthesis?.speak(new SpeechSynthesisUtterance("")); // unlock speech inside the click
+    if (v && resumeAt) v.currentTime = Math.max(0, resumeAt - 2);
+    r.current.needsClick = false;
+    r.current.started = false; // the start gate plays it once enough commentary is ready
+    setResumeAt(null);
+  };
 
   const speak = useCallback((ln: Line) => {
     if (!("speechSynthesis" in window)) return;
@@ -66,7 +99,8 @@ export default function LivePlayer({ onFinished }: { onFinished?: (clipId: strin
         const t = v.currentTime;
         setNow(t);
         const finished = s.status === "done" || s.status === "finalizing";
-        if (!s.started && (s.readyT >= START_BUFFER_S || (finished && s.readyT > 0)) && v.readyState >= 2) {
+        if (s.sid && !v.paused && Math.abs(t - s.savedAt) > 1) { s.savedAt = t; store.set(posKey(s.sid), String(t)); }
+        if (!s.needsClick && !s.started && (s.readyT >= START_BUFFER_S || (finished && s.readyT > 0)) && v.readyState >= 2) {
           s.started = true;
           v.play().catch(() => {});
         }
@@ -128,7 +162,8 @@ export default function LivePlayer({ onFinished }: { onFinished?: (clipId: strin
   const go = async () => {
     if (!file) return;
     setError(null); setLines([]); setReadyT(0); setStats(null); setPerf(null); setSid(null);
-    Object.assign(r.current, { spoken: new Set<number>(), started: false, autoPaused: false });
+    Object.assign(r.current, { spoken: new Set<number>(), started: false, autoPaused: false, needsClick: false });
+    setResumeAt(null);
     const url = URL.createObjectURL(file);
     setSrc(url);
     // unlock media + speech inside the click (browsers block them later without a gesture)
@@ -139,6 +174,7 @@ export default function LivePlayer({ onFinished }: { onFinished?: (clipId: strin
       const id = await startLive(file, language, setUploadPct);
       setSid(id);
       setStatus("running");
+      location.hash = `live/${id}`; // a reload can find the session again
     } catch (e) {
       setStatus("error");
       setError(String(e instanceof Error ? e.message : e));
@@ -174,7 +210,10 @@ export default function LivePlayer({ onFinished }: { onFinished?: (clipId: strin
             Playback starts after a {START_BUFFER_S}-second commentary buffer.</div>
         )}
         {buffering && <div className="buffering">Buffering commentary…</div>}
-        {src && !r.current.started && status !== "error" && <div className="buffering">Analysing the first {START_BUFFER_S} s…</div>}
+        {resumeAt !== null && (
+          <button className="resume" onClick={resume}>▶ Resume live commentary{resumeAt > 5 ? ` from ${fmt(resumeAt)}` : ""}</button>
+        )}
+        {src && resumeAt === null && !r.current.started && status !== "error" && <div className="buffering">Analysing the first {START_BUFFER_S} s…</div>}
         {captions && current >= 0 && (
           <div className={`caption ${lines[current].excitement >= 0.7 ? "big" : ""}`}>{lines[current].text}</div>
         )}

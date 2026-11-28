@@ -64,7 +64,7 @@ class LiveSession:
 
     def snapshot(self, since: int = 0) -> dict:
         with self.cond:
-            return {"session_id": self.sid, "status": self.status, "error": self.error,
+            return {"session_id": self.sid, "status": self.status, "error": self.error, "language": self.language,
                     "duration": self.duration, "processed_t": round(self.processed_t, 2),
                     "ready_t": round(self.ready_t, 2), "kits": self.kits, "stats": self.stats,
                     "n_lines": len(self.lines), "lines": [ln.model_dump() for ln in self.lines[since:]],

@@ -120,3 +120,4 @@ audio { width: 100%; margin-top: 8px; }
 .feed li.ahead { opacity: 0.45; }
 .possession { display: flex; gap: 2px; border-radius: 8px; overflow: hidden; margin-bottom: 10px; font-size: 12px; font-weight: 700; }
 .possession .pos { padding: 6px 8px; color: #111; text-shadow: 0 0 3px rgba(255,255,255,0.6); white-space: nowrap; min-width: 60px; transition: flex-grow 0.6s; }
+.resume { position: absolute; inset: 0; margin: auto; width: fit-content; height: fit-content; padding: 14px 22px; font-size: 16px; border-radius: 10px; border: none; background: var(--accent, #2fbf71); color: #04130a; cursor: pointer; font-weight: 600; }
