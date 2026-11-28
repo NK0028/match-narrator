@@ -36,7 +36,7 @@ export default function App() {
       setMode(mode);
       setUploads(uploads);
       setLive(live);
-      if (live && location.hash === "#live") setView("live");
+      if (live && location.hash.startsWith("#live")) setView("live");
       const cs = await refresh(mode);
       const fromHash = location.hash.slice(1);
       setClipId(cs.find((c) => c.id === fromHash)?.id ?? cs[0]?.id ?? null);
@@ -46,7 +46,7 @@ export default function App() {
   useEffect(() => {
     const onHash = () => {
       const h = location.hash.slice(1);
-      if (h === "live") setView("live");
+      if (h === "live" || h.startsWith("live/")) setView("live");
       else if (h) { setView("clips"); setClipId(h); }
     };
     window.addEventListener("hashchange", onHash);
@@ -78,7 +78,7 @@ export default function App() {
           {live && (
             <div className="tabs">
               <button className={view === "clips" ? "active" : ""} onClick={() => { setView("clips"); if (clipId) location.hash = clipId; }}>Clips</button>
-              <button className={view === "live" ? "active" : ""} onClick={() => { setView("live"); location.hash = "live"; }}>● Live commentary</button>
+              <button className={view === "live" ? "active" : ""} onClick={() => { setView("live"); if (!location.hash.startsWith("#live")) location.hash = "live"; }}>● Live commentary</button>
             </div>
           )}
           <h2>Clips</h2>

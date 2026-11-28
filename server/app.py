@@ -209,6 +209,15 @@ def live_snapshot(sid: str, since: int = 0):
     return _live(sid).snapshot(since)
 
 
+@app.get("/api/live/{sid}/video")
+def live_video(sid: str):
+    """The uploaded file, so a reloaded page can resume the session (FileResponse serves ranges)."""
+    sess = _live(sid)
+    if not os.path.isfile(sess.video):
+        raise HTTPException(404, "video gone")
+    return FileResponse(sess.video)
+
+
 @app.get("/api/live/{sid}/stream")
 def live_stream(sid: str, since: int = 0):
     """Server-sent events. Replays lines from `since`, then streams new ones as they're final."""

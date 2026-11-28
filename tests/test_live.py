@@ -228,7 +228,12 @@ def test_live_api_streams_and_replays(monkeypatch, tmp_path):
     import server.app as appmod
 
     monkeypatch.setattr(appmod, "CLIPS", str(tmp_path))
-    monkeypatch.setattr(appmod, "_new_live_session", lambda sid, *a, **k: FakeSession(sid))
+    def make(sid, video, *a, **k):
+        fs = FakeSession(sid)
+        fs.video = video
+        return fs
+
+    monkeypatch.setattr(appmod, "_new_live_session", make)
     appmod.LIVE.clear()
     c = TestClient(appmod.app)
     r = c.post("/api/live", files={"video": ("m.mp4", b"\x00" * 100, "video/mp4")})
@@ -238,4 +243,7 @@ def test_live_api_streams_and_replays(monkeypatch, tmp_path):
     assert "event: line" in body and "Red have it now." in body and "event: done" in body
     assert "event: line" not in c.get(f"/api/live/{sid}/stream?since=1").text  # resume skips sent lines
     assert c.get(f"/api/live/{sid}").json()["status"] == "done"
+    v = c.get(f"/api/live/{sid}/video", headers={"Range": "bytes=0-9"})  # a reloaded page replays the upload
+    assert v.status_code == 206 and len(v.content) == 10
+    assert c.get("/api/live/live-nope/video").status_code == 404
     assert c.post("/api/live", files={"video": ("m.txt", b"x", "text/plain")}).status_code == 400

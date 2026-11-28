@@ -115,7 +115,9 @@ streams lines over server-sent events, like a broadcast delay. If playback catch
   default `claude-haiku-5-5`) writes each line asynchronously against a 3 s deadline. A line that is late, too
   long or fails the grounding guard is replaced by a template.
 - `session.py` + `/api/live`, `/api/live/{id}/stream`: the worker thread and the SSE stream. The stream replays
-  from `?since=`, so a dropped connection resumes. A finished session is saved as a normal clip.
+  from `?since=`, so a dropped connection resumes. The page keeps the session in its URL (`#live/<id>`): after a
+  reload it replays the lines, streams the uploaded file back from `/api/live/{id}/video` and offers to resume
+  where you left off. A finished session is saved as a normal clip.
 - The browser speaks the lines with the Web Speech API and ducks the match audio under the voice.
 
 **Measured** on an 11.7-minute 1080p broadcast highlights clip (templates only, Apple M1 Pro), using
@@ -140,6 +142,8 @@ speech coverage, gaps, Claude latency, ball-detection rate) and a 30-line `eval/
 Live-mode limits:
 - With no pitch homography, direction is screen-relative ("play swings left"), not pitch zones.
 - Possession is a nearest-player heuristic that gets noisy when the ball is hidden or tiny, and in highlights full of cuts.
+- Sessions live in server memory: restarting the server ends them (finished ones remain as clips). One live
+  session runs at a time.
 - Kits are named by colour, and player names would need readable numbers plus a roster.
 - The raw-video spotter is opt-in (`LIVE_SPOTTER=1`, plus SoccerNet's `pca_512_TF2.pkl` / `average_512_TF2.pkl`
   in `models/`), because torchvision features differ from SoccerNet's.

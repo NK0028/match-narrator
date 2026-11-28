@@ -110,6 +110,16 @@ export function startLive(file: File, language: string, onProgress: (f: number) 
   });
 }
 
+export type LiveSnapshot = { session_id: string; status: string; error: string | null; language: string; duration: number };
+
+/** null when the server no longer has the session (restarted, or never existed). */
+export async function getLiveSnapshot(sid: string): Promise<LiveSnapshot | null> {
+  const r = await fetch(`api/live/${encodeURIComponent(sid)}?since=1000000000`);
+  if (r.status === 404) return null;
+  if (!r.ok) throw new Error(`live session lookup failed (${r.status})`);
+  return r.json();
+}
+
 export function openLiveStream(sid: string, since: number, h: LiveHandlers): EventSource {
   const es = new EventSource(`api/live/${sid}/stream?since=${since}`);
   es.addEventListener("line", (e) => h.line(JSON.parse((e as MessageEvent).data)));
